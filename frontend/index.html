@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Blog Generator</title>
+
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 750px;
+            max-height: 90vh;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            border-radius: 12px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .chat-header {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .chat-box {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 10px;
+        }
+
+        .message {
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            max-width: 80%;
+            line-height: 1.6;
+        }
+
+        .user-msg {
+            background: #007bff;
+            color: white;
+            align-self: flex-end;
+        }
+
+        .bot-msg {
+            background: #f1f1f1;
+            color: #333;
+            align-self: flex-start;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        button {
+            padding: 12px 18px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Markdown styles */
+        .bot-msg h1, .bot-msg h2, .bot-msg h3 {
+            color: #222;
+            margin-top: 10px;
+        }
+
+        .bot-msg p {
+            margin-bottom: 10px;
+            line-height: 1.7;
+        }
+
+        .bot-msg ul {
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .typing {
+            font-style: italic;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">🤖 AI Blog Generator</div>
+        <div class="chat-box" id="chat-box"></div>
+
+        <div class="input-container">
+            <input type="text" id="topic" placeholder="Enter your blog topic..." />
+            <button onclick="generateBlog()">Generate</button>
+        </div>
+    </div>
+
+    <script>
+        async function generateBlog() {
+            const topic = document.getElementById("topic").value.trim();
+            const chatBox = document.getElementById("chat-box");
+
+            if (!topic) {
+                alert("Please enter a topic!");
+                return;
+            }
+
+            // Show user's message
+            addMessage(`You: ${topic}`, "user-msg");
+
+            // Show typing indicator
+            const typingDiv = document.createElement("div");
+            typingDiv.classList.add("bot-msg", "typing");
+            typingDiv.innerText = "AI is thinking...";
+            chatBox.appendChild(typingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/blogs", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ topic }),
+                });
+
+                const data = await response.json();
+                chatBox.removeChild(typingDiv);
+
+                if (response.ok && data.success) {
+                    const markdownContent = marked.parse(data.content);
+                    addTypingEffect(markdownContent, "bot-msg");
+                } else {
+                    addMessage("⚠️ Failed to generate blog. Try again!", "bot-msg");
+                }
+            } catch (err) {
+                chatBox.removeChild(typingDiv);
+                addMessage("❌ Error connecting to server!", "bot-msg");
+            }
+        }
+
+        function addMessage(text, className) {
+            const chatBox = document.getElementById("chat-box");
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("message", className);
+            messageDiv.innerHTML = text;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function addTypingEffect(content, className) {
+            const chatBox = document.getElementById("chat-box");
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("message", className);
+            chatBox.appendChild(messageDiv);
+
+            let index = 0;
+            const speed = 15; // Typing speed
+
+            function type() {
+                if (index < content.length) {
+                    messageDiv.innerHTML = content.slice(0, index) + "|";
+                    index++;
+                    setTimeout(type, speed);
+                } else {
+                    messageDiv.innerHTML = content;
+                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            type();
+        }
+    </script>
+</body>
+</html>
